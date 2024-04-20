@@ -10,7 +10,7 @@ resource "aws_instance" "example" {
   import {
   to = aws_key_pair.project_keypair
   id = "project_keypair"
-}
-  }
+        }
+        }
 }
 
