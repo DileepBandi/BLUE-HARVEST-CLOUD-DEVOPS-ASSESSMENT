@@ -7,5 +7,10 @@ resource "aws_instance" "example" {
   instance_type = "t2.micro"                # Specify your desired instance type
   tags = {
     Name = "App server"
+  import {
+  to = aws_key_pair.project_keypair
+  id = "project_keypair"
+}
   }
 }
+
