@@ -161,3 +161,21 @@ output "app_url" {
 output "ecr_url" {
   value = aws_ecr_repository.app_ecr_repo.repository_url
 }
+output "target_group" {
+value = aws_lb_target_group.target_group.arn
+}
+output "cluster_id" {
+value = aws_ecs_cluster.my_cluster.id
+}
+output "app_task_arn" {
+value = aws_ecs_task_definition.app_task.arn
+}
+output "defalut_subnet_a_id" {
+value = aws_default_subnet.default_subnet_a.id
+}
+output "defalut_subnet_b_id" {
+value = aws_default_subnet.default_subnet_b.id
+}
+output "security_group" {
+value = aws_security_group.service_security_group.id
+}
