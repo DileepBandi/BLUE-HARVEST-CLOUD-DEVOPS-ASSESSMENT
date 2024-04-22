@@ -1,0 +1,132 @@
+pipeline {
+    agent any 
+
+    environment {
+        AWS_ACCESS_KEY_ID     = credentials('access_key')
+        AWS_SECRET_ACCESS_KEY = credentials('secret_key')
+    }
+    
+    stages {
+        stage('create infrastructure') {
+            steps { 
+                script {
+                if (!fileExists('terraform-script')) {
+                 echo 'folder doesnot exits , creating a new one'
+                 sh 'mkdir terraform-script'
+                 } 
+                sh '''
+                cd terraform-script
+                if [ ! -d "pratice" ]; then
+                    echo "pratice DIR does not exist."
+                    git clone 'https://github.com/DileepBandi/pratice.git'
+                    cd pratice/terraform/infra
+                else 
+                    cd pratice
+                    git pull
+                    cd terraform/infra
+                fi
+                
+                pwd
+                terraform init
+                terraform validate
+                terraform plan
+                terraform $action --auto-approve
+                '''
+                
+                }
+                script {
+                    // Parse Terraform output to extract ARN
+                    def terraformOutput = sh(script: '''
+                    cd terraform-script/pratice/terraform/infra
+                    terraform output -json''', returnStdout: true).trim()
+                    def output_json = readJSON(text: terraformOutput)
+                    def app_url = output_json.app_url.value
+                    def ecr_url = output_json.ecr_url.value
+                    def target_group = output_json.target_group.value
+                    def cluster_id = output_json.cluster_id.value
+                    def app_task_arn = output_json.app_task_arn.value
+                    def defalut_subnet_a_id = output_json.defalut_subnet_a_id.value
+                    def defalut_subnet_b_id = output_json.defalut_subnet_b_id.value
+                    def security_group = output_json.security_group.value
+                    
+                    // Store ARN in environment variable
+                    env.app_url = app_url
+                    env.ecr_url = ecr_url
+                    env.target_group = target_group
+                    env.cluster_id = cluster_id
+                    env.app_task_arn = app_task_arn
+                    env.defalut_subnet_a_id = defalut_subnet_a_id
+                    env.defalut_subnet_b_id = defalut_subnet_b_id
+                    env.security_group = security_group
+                }
+            }
+            
+        }
+        
+        stage('App Checkout and Build') {
+            steps {
+                script {
+                if (!fileExists('App_CodeBase')) {
+                 echo 'Folder doesnot exists , Creating a new one'
+                 sh 'mkdir App_CodeBase'
+                 }
+                 sh '''
+                cd App_CodeBase
+                if [ ! -d "spring-boot-react-example" ]; then
+                    echo "spring-boot-react-example DIR does not exist."
+                    git clone 'https://gitlab.com/cloud-devops-assignments/spring-boot-react-example.git'
+                    cd spring-boot-react-example
+                else 
+                    cd spring-boot-react-example
+                    git pull 
+                fi
+                pwd
+                export M2_HOME=/opt/apache-maven-3.6.3
+                export M2=$M2_HOME/bin
+                export PATH=$M2:$PATH
+                mvn -version
+                mvn clean package
+                whoami
+                docker build --tag=app .
+                '''
+                } 
+            }
+        }
+        stage('Push_Dockercontainer_to_Ecr') {
+            steps {
+                sh """
+                docker tag app:latest ${env.ecr_url}
+                aws ecr get-login-password --region eu-west-2 | docker login --username AWS --password-stdin  533266990069.dkr.ecr.eu-west-2.amazonaws.com
+                docker push ${env.ecr_url}
+                """
+            }
+        }
+        stage('Create or restart ECS Service') {
+            steps {
+                script {
+                    def service_status = sh(returnStdout: true, script: 'aws ecs --region eu-west-2 describe-services --cluster app-cluster-terraform --services app-service-terraform | jq --raw-output "select(.services[].status != null ) | .services[].status"')
+                    echo "Output: ${service_status}"
+                    if (service_status == null || service_status == "") {
+                        echo "service does not exits, creating a new one"
+                        sh """
+                        cd terraform-script/pratice/terraform/ecs-service
+                        terraform init
+                        terraform validate
+                        terraform plan -var "cluster_id=${env.cluster_id}" -var "task_arn=${env.app_task_arn}" -var "lb_target_group_arn=${env.target_group}" -var "default_subnet_a_id=${env.defalut_subnet_a_id}" -var "default_subnet_b_id=${env.defalut_subnet_b_id}" -var "security_group_id=${env.security_group}"
+                        terraform apply --auto-approve -var "cluster_id=${env.cluster_id}" -var "task_arn=${env.app_task_arn}" -var "lb_target_group_arn=${env.target_group}" -var "default_subnet_a_id=${env.defalut_subnet_a_id}" -var "default_subnet_b_id=${env.defalut_subnet_b_id}" -var "security_group_id=${env.security_group}"
+                        """
+
+                    }
+                    else {
+                        echo "service exits , restarting it"
+                        sh """
+                        aws ecs update-service --cluster app-cluster-terraform --service app-service-terraform --force-new-deployment --region eu-west-2
+                       
+                        """
+                    }
+                }
+            }
+        }
+        
+    }
+}
