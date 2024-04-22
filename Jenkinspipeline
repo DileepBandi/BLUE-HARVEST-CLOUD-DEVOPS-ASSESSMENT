@@ -16,12 +16,12 @@ pipeline {
                  } 
                 sh '''
                 cd terraform-script
-                if [ ! -d "pratice" ]; then
-                    echo "pratice DIR does not exist."
-                    git clone 'https://github.com/DileepBandi/pratice.git'
-                    cd pratice/terraform/infra
+                if [ ! -d "BLUE-HARVEST-CLOUD-DEVOPS-ASSESSMENT" ]; then
+                    echo "BLUE-HARVEST-CLOUD-DEVOPS-ASSESSMENT DIR does not exist."
+                    git clone 'https://github.com/DileepBandi/BLUE-HARVEST-CLOUD-DEVOPS-ASSESSMENT.git'
+                    cd BLUE-HARVEST-CLOUD-DEVOPS-ASSESSMENT/terraform/infra
                 else 
-                    cd pratice
+                    cd BLUE-HARVEST-CLOUD-DEVOPS-ASSESSMENT
                     git pull
                     cd terraform/infra
                 fi
@@ -37,7 +37,7 @@ pipeline {
                 script {
                     // Parse Terraform output to extract ARN
                     def terraformOutput = sh(script: '''
-                    cd terraform-script/pratice/terraform/infra
+                    cd terraform-script/BLUE-HARVEST-CLOUD-DEVOPS-ASSESSMENT/terraform/infra
                     terraform output -json''', returnStdout: true).trim()
                     def output_json = readJSON(text: terraformOutput)
                     def app_url = output_json.app_url.value
@@ -109,7 +109,7 @@ pipeline {
                     if (service_status == null || service_status == "") {
                         echo "service does not exits, creating a new one"
                         sh """
-                        cd terraform-script/pratice/terraform/ecs-service
+                        cd terraform-script/BLUE-HARVEST-CLOUD-DEVOPS-ASSESSMENT/terraform/ecs-service
                         terraform init
                         terraform validate
                         terraform plan -var "cluster_id=${env.cluster_id}" -var "task_arn=${env.app_task_arn}" -var "lb_target_group_arn=${env.target_group}" -var "default_subnet_a_id=${env.defalut_subnet_a_id}" -var "default_subnet_b_id=${env.defalut_subnet_b_id}" -var "security_group_id=${env.security_group}"
