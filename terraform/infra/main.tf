@@ -5,8 +5,8 @@ provider "aws" {
 }
 
 
-resource "aws_iam_role" "ecsTaskExecutionRoleBH" {
-  name               = "ecsTaskExecutionRoleBH"
+resource "aws_iam_role" "ecsTaskExecutionRoleBH11" {
+  name               = "ecsTaskExecutionRoleBH11"
   assume_role_policy = "${data.aws_iam_policy_document.assume_role_policy.json}"
 }
 
@@ -22,7 +22,7 @@ data "aws_iam_policy_document" "assume_role_policy" {
 }
 
 resource "aws_iam_role_policy_attachment" "ecsTaskExecutionRole_policy" {
-  role       = "${aws_iam_role.ecsTaskExecutionRoleBH.name}"
+  role       = "${aws_iam_role.ecsTaskExecutionRoleBH11.name}"
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
@@ -63,7 +63,7 @@ resource "aws_ecs_task_definition" "app_task" {
   network_mode             = "awsvpc"    # add the AWS VPN network mode as this is required for Fargate
   memory                   = 512         # Specify the memory the container requires
   cpu                      = 256         # Specify the CPU the container requires
-  execution_role_arn       = "${aws_iam_role.ecsTaskExecutionRoleBH.arn}"
+  execution_role_arn       = "${aws_iam_role.ecsTaskExecutionRoleBH11.arn}"
 }
 
 
