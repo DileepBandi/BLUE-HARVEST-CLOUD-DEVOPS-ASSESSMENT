@@ -123,10 +123,15 @@ pipeline {
                         aws ecs update-service --cluster app-cluster-terraform --service app-service-terraform --force-new-deployment --region eu-west-2
                        
                         """
-                    }
+                        }
                 }
             }
         }
         
     }
+    post {
+        always {
+            echo "App URL: ${env.app_url}"
+		       }
+        }
 }
